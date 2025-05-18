@@ -7,5 +7,8 @@ __pycache__/
 build/*
 _C.*
 outputs/*
-checkpoints/*.pt
+./checkpoints
+checkpoints/*
 demo/backend/checkpoints/*.pt
+lasot_dataset
+results/*
