@@ -37,11 +37,11 @@ elif device.type == "mps":
 
 LaSOTDataset_Conf = {
     "test":{
-        "home": "/data2/lyx/LaSOT/LaSOTTest",
+        "home": "/data/LaSOT/LaSOTTest/LaSOTTest",
         "list_file": "list.txt"
     },
     "extra":{
-        "home":"/data2/lyx/LaSOT/LaSOText",
+        "home":"/data/LaSOT/LaSOText",
         "list_file": "list.txt"
     }
 }
@@ -131,6 +131,11 @@ def mask2bbox(mask, xywh=False):
 def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--samsam2",
+        action="store_true",
+        help="SAM 2 model configuration file",
+    )
+    parser.add_argument(
         "--cfg",
         type=str,
         default="configs/sam2.1/sam2.1_hiera_b+.yaml",
@@ -167,8 +172,8 @@ def main():
     result_dir = configs.out_dir
     os.makedirs(result_dir, exist_ok=True)
 
-
-    predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device)
+    samsam2_model = configs.samsam2
+    predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device, samsam2_model=samsam2_model)
 
     dataset = LaSOTDataset(dataset_name)
     for i, seq in enumerate(dataset.seqname_list):
@@ -188,7 +193,7 @@ def main():
         ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
 
         rect = dataset.get_initial_rect(i)[0]
-        x,y,w,h = rect
+        x, y, w, h = rect
         box = np.array([x,y,x+w,y+h], dtype=np.float32)
         _, _, out_mask_logits = predictor.add_new_points_or_box(
                                                         inference_state=inference_state,
@@ -196,7 +201,7 @@ def main():
                                                         obj_id=ann_obj_id,
                                                         box=box,
                                                         )
-        
+
         results = [f"{x},{y},{w},{h}"]
         for out_frame_idx, _, out_mask_logits in predictor.propagate_in_video(inference_state):
             out_mask = (out_mask_logits[0] > 0.0).cpu().numpy()
