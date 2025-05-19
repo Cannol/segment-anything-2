@@ -115,13 +115,16 @@ class LaSOTDataset(object):
         gt_file = os.path.join(self.conf['home'], self.seqname_list[seq_index], 'groundtruth.txt')
         return get_txt_list(gt_file,parse_int=True,index=0)
         
-def mask2bbox(mask):
+def mask2bbox(mask, xywh=False):
     nonzero_indices = np.nonzero(mask)  # 获取非零值的索引
     if len(nonzero_indices[0]) > 0:
         # print(nonzero_indices)
         min_y, min_x = np.min(nonzero_indices, axis=1)  # 计算最小的 y 和 x 坐标
         max_y, max_x = np.max(nonzero_indices, axis=1)  # 计算最大的 y 和 x 坐标
-        bbox = [int(min_x), int(min_y), int(max_x), int(max_y)]
+        if xywh:
+            bbox = [int(min_x), int(min_y), int(max_x)-int(min_x), int(max_y)-int(min_y)]
+        else:
+            bbox = [int(min_x), int(min_y), int(max_x), int(max_y)]
         return bbox
     return [-10, -10, -1, -1]
 
@@ -185,19 +188,20 @@ def main():
         ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
 
         rect = dataset.get_initial_rect(i)[0]
-        box = np.array(rect, dtype=np.float32)
+        x,y,w,h = rect
+        box = np.array([x,y,x+w,y+h], dtype=np.float32)
         _, _, out_mask_logits = predictor.add_new_points_or_box(
                                                         inference_state=inference_state,
                                                         frame_idx=ann_frame_idx,
                                                         obj_id=ann_obj_id,
                                                         box=box,
                                                         )
-        x,y,w,h = rect
+        
         results = [f"{x},{y},{w},{h}"]
         for out_frame_idx, _, out_mask_logits in predictor.propagate_in_video(inference_state):
             out_mask = (out_mask_logits[0] > 0.0).cpu().numpy()
             # print(out_mask.shape)
-            bbox = mask2bbox(out_mask[0])
+            bbox = mask2bbox(out_mask[0], True)
             x, y, w, h = bbox
             results.append(f"{x},{y},{w},{h}")
         
