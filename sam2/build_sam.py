@@ -105,6 +105,7 @@ def build_sam2_video_predictor(
     hydra_overrides_extra=[],
     apply_postprocessing=True,
     vos_optimized=False,
+    samsam2_model=False,
     **kwargs,
 ):
     hydra_overrides = [
@@ -114,6 +115,10 @@ def build_sam2_video_predictor(
         hydra_overrides = [
             "++model._target_=sam2.sam2_video_predictor.SAM2VideoPredictorVOS",
             "++model.compile_image_encoder=True",  # Let sam2_base handle this
+        ]
+    if samsam2_model:
+        hydra_overrides = [
+            "++model._target_=sam2.sam2_video_predictor_scene.SAMSAM2VideoPredictor",
         ]
 
     if apply_postprocessing:
