@@ -799,6 +799,7 @@ class SAM2VideoPredictor(SAM2Base):
             "pred_masks": pred_masks,
             "obj_ptr": obj_ptr,
             "object_score_logits": object_score_logits,
+            "best_iou_score": current_out["best_iou_score"],
         }
         return compact_current_out, pred_masks_gpu
 

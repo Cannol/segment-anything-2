@@ -10,6 +10,7 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import cv2
 from PIL import Image
 
 # select the device for computation
@@ -106,6 +107,25 @@ class LaSOTDataset(object):
         if output_format == 'path':
             for i, frame_file in enumerate(frame_jpgs):
                 yield i, os.path.join(imgs_root, frame_file)
+
+    def get_seq_frames(self, seq_index, output_format="path"):
+        """
+        output_format: "path", "numpy_bgr", "image"
+        """
+        seqname = self.seqname_list[seq_index]
+
+        seq_root = os.path.join(self.conf['home'], seqname)
+        imgs_root = os.path.join(seq_root, 'img')
+        frame_jpgs = [i for i in os.listdir(imgs_root) if i.endswith('.jpg')]
+        frame_jpgs.sort()
+
+        if output_format == 'path':
+            frames = []
+            for i, frame_file in enumerate(frame_jpgs):
+                frames.append(os.path.join(imgs_root, frame_file))
+            return frames
+
+        return None
     
     def get_seq_img_root(self, seq_index):
         return os.path.join(self.conf['home'], self.seqname_list[seq_index], 'img')
@@ -127,6 +147,28 @@ def mask2bbox(mask, xywh=False):
             bbox = [int(min_x), int(min_y), int(max_x), int(max_y)]
         return bbox
     return [-10, -10, -1, -1]
+
+def show_mask(img, mask, random_color=False, bbox=None):
+
+    img = cv2.imread(img)
+
+    if random_color:
+        color = np.random.random(3)
+    else:
+        cmap = plt.get_cmap("tab10")
+        cmap_idx = 0
+        color = (np.array(cmap(cmap_idx)[:3]) * 255).astype(np.uint8)
+    h, w = mask.shape[-2:]
+    mask_image = mask.reshape(h, w, -1) * color.reshape(1, 1, -1)
+    img_mask = cv2.addWeighted(img, 1.0, mask_image, 0.6, 1)
+
+    if bbox is not None:
+        x, y, w, h = bbox
+        img_mask = cv2.rectangle(img_mask, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+    cv2.imshow("show", img_mask)
+    cv2.waitKey(100)
+    return img_mask
 
 def read_args():
     parser = argparse.ArgumentParser()
@@ -165,6 +207,7 @@ def read_args():
 def main():
     from sam2.build_sam import build_sam2_video_predictor
 
+    vis = False
     configs = read_args()
     sam2_checkpoint = configs.checkpoint
     model_cfg = configs.cfg
@@ -201,6 +244,10 @@ def main():
                                                         obj_id=ann_obj_id,
                                                         box=box,
                                                         )
+        if vis:
+            out_mask = (out_mask_logits[0] > 0.0).cpu().numpy()
+            img_paths = dataset.get_seq_frames(i)
+            show_mask(img_paths[0], out_mask)
 
         results = [f"{x},{y},{w},{h}"]
         for out_frame_idx, _, out_mask_logits in predictor.propagate_in_video(inference_state):
@@ -208,6 +255,8 @@ def main():
             # print(out_mask.shape)
             bbox = mask2bbox(out_mask[0], True)
             x, y, w, h = bbox
+            if vis:
+                show_mask(img_paths[out_frame_idx], out_mask, bbox=bbox)
             results.append(f"{x},{y},{w},{h}")
         
         results = '\n'.join(results)
