@@ -153,7 +153,7 @@ class SAMSAM2VideoPredictor(SAM2VideoPredictor):
             self.judge_state(output_dict, frame_idx-1)
             proposed_frames, flag = self.select_frames(frame_idx)
             proposed_frames = self.finetune_samples(proposed_frames, flag)
-            print(f"type: {flag} -- {proposed_frames}")
+            # print(f"type: {flag} -- {proposed_frames}")
             # Retrieve the memories encoded with the maskmem backbone
             to_cat_memory, to_cat_memory_pos_embed = [], []
             t_pos_and_prevs = []

@@ -623,7 +623,7 @@ class SAM2Base(torch.nn.Module):
                 # If we have at least one object pointer, add them to the across attention
                 if len(pos_and_ptrs) > 0:
                     pos_list, ptrs_list = zip(*pos_and_ptrs)
-                    print(pos_list)
+                    # print(pos_list)
                     # stack object pointers along dim=0 into [ptr_seq_len, B, C] shape
                     obj_ptrs = torch.stack(ptrs_list, dim=0)
                     # a temporal positional embedding based on how far each object pointer is from
