@@ -178,10 +178,21 @@ def read_args():
         help="SAM 2 model configuration file",
     )
     parser.add_argument(
-        "--threshold",
+        "--method",
+        type=str,
+        default="default",
+        help="th, thplus",
+    )
+    parser.add_argument(
+        "--th",
         type=float,
-        default=1,
+        default=1.0,
         help="SAM 2 model configuration file",
+    )
+    parser.add_argument(
+        "--addon_ths",
+        type=str,
+        default=None
     )
     parser.add_argument(
         "--cfg",
@@ -211,7 +222,7 @@ def read_args():
     return parser.parse_args()
 
 def main():
-    from sam2.build_sam import build_sam2_video_predictor
+    from sam2.build_sam2 import build_sam2_video_predictor
 
     vis = False
     configs = read_args()
@@ -221,9 +232,9 @@ def main():
     result_dir = configs.out_dir
     os.makedirs(result_dir, exist_ok=True)
 
-    samsam2_model = configs.samsam2
-    th = configs.threshold
-    predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device, samsam2_model=samsam2_model, threshold_model=th)
+    predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device,
+                                           model_selection=configs.method, threshold=configs.th,
+                                           addon_ths=configs.addon_ths)
 
     dataset = LaSOTDataset(dataset_name)
     for i, seq in enumerate(dataset.seqname_list):
@@ -258,15 +269,14 @@ def main():
 
         results = [f"{x},{y},{w},{h}"]
         for out_frame_idx, _, out_mask_logits in predictor.propagate_in_video(inference_state):
-            if out_frame_idx == 0:
-                continue
             out_mask = (out_mask_logits[0] > 0.0).cpu().numpy()
             # print(out_mask.shape)
             bbox = mask2bbox(out_mask[0], True)
             x, y, w, h = bbox
             if vis:
                 show_mask(img_paths[out_frame_idx], out_mask, bbox=bbox)
-            results.append(f"{x},{y},{w},{h}")
+            if out_frame_idx > 0:
+                results.append(f"{x},{y},{w},{h}")
             # print(f"{x},{y},{w},{h}")
         
         results = '\n'.join(results)

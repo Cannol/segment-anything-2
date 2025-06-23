@@ -105,28 +105,47 @@ def build_sam2_video_predictor(
     hydra_overrides_extra=[],
     apply_postprocessing=True,
     vos_optimized=False,
-    samsam2_model=False,
-    threshold_model=-1,
+    model_selection="default",
+    threshold=1.0,
+    addon_ths=None,
     **kwargs,
 ):
-    hydra_overrides = [
-        "++model._target_=sam2.sam2_video_predictor.SAM2VideoPredictor",
-    ]
-    if vos_optimized:
+    print('USING BUILD Version 2')
+    print(f"[MODEL SELECTION] {model_selection}")
+    if model_selection=="default":
         hydra_overrides = [
-            "++model._target_=sam2.sam2_video_predictor.SAM2VideoPredictorVOS",
-            "++model.compile_image_encoder=True",  # Let sam2_base handle this
+            "++model._target_=sam2.sam2_video_predictor.SAM2VideoPredictor",
         ]
-    if samsam2_model:
+        if vos_optimized:
+            hydra_overrides = [
+                "++model._target_=sam2.sam2_video_predictor.SAM2VideoPredictorVOS",
+                "++model.compile_image_encoder=True",  # Let sam2_base handle this
+            ]
+    elif model_selection=="samsam2":
         hydra_overrides = [
             "++model._target_=sam2.sam2_video_predictor_scene.SAMSAM2VideoPredictor",
         ]
     
-    if threshold_model >= 0:
+    elif model_selection=="thplus":
+        # threshold_plus model
+        if addon_ths is None:
+            hydra_overrides = [
+                "++model._target_=sam2.sam2_video_predictor_threshold_plus.ThresholdPlusVideoPredictor",
+                f"++model.th={float(threshold)}",
+            ]
+        else:
+            hydra_overrides = [
+                "++model._target_=sam2.sam2_video_predictor_threshold_plus.ThresholdPlusVideoPredictor",
+                f"++model.th={float(threshold)}",
+                f"++model.addon_ths={list(map(float, addon_ths.split(',')))}"
+            ]
+    elif model_selection=="th":
         hydra_overrides = [
             "++model._target_=sam2.sam2_video_predictor_threshold.ThresholdVideoPredictor",
-            f"++model.th={int(threshold_model)}",
+            f"++model.th={float(threshold)}",
         ]
+    else:
+        raise ValueError(model_selection)
 
     if apply_postprocessing:
         hydra_overrides_extra = hydra_overrides_extra.copy()

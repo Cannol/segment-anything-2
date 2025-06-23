@@ -11,3 +11,4 @@ checkpoints/*
 demo/backend/checkpoints/*.pt
 lasot_dataset
 results/*
+private_script/*
